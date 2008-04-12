@@ -1,0 +1,9 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <f:entry title="Repository Parent URL" help="/plugin/bitkeeper/parenthelp.html">
+    <f:textbox name="bitkeeper.parent" value="${scm.parent}" />
+  </f:entry>
+  <f:entry title="Local repository name" help="/plugin/bitkeeper/localhelp.html">
+    <f:textbox name="bitkeeper.localRepository" value="${scm.localRepository}" />
+  </f:entry>
+  
+</j:jelly>
