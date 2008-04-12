@@ -216,13 +216,13 @@ public class BitKeeperSCM extends SCM {
                         Matcher m = VERSION_STRING.matcher(baos.toString());
                         if(m.find()) {
                             try {
-                                if(new VersionNumber(m.group(1)).compareTo(V0_9_4)>=0) {
+                                if(new VersionNumber(m.group(1)).compareTo(V4_0_1)>=0) {
                                     ok(); // right version
                                 } else {
-                                    error("This bk is ver."+m.group(1)+" but we need 0.9.4+");
+                                    error("This bk is version "+m.group(1)+" but we need 4.0.1+");
                                 }
                             } catch (IllegalArgumentException e) {
-                                warning("Hudson can't tell if this bk is 0.9.4 or later (detected version is %s)",m.group(1));
+                                warning("Hudson can't tell if this bk is 4.0.1 or later (detected version is %s)",m.group(1));
                             }
                             return;
                         }
@@ -239,9 +239,9 @@ public class BitKeeperSCM extends SCM {
         /**
          * Pattern matcher for the version number.
          */
-        private static final Pattern VERSION_STRING = Pattern.compile("\\(version ([0-9.]+)");
+        private static final Pattern VERSION_STRING = Pattern.compile("BitKeeper version is bk-([0-9.]+)");
 
-        private static final VersionNumber V0_9_4 = new VersionNumber("0.9.4");
+        private static final VersionNumber V4_0_1 = new VersionNumber("4.0.1");
     }
 
 
