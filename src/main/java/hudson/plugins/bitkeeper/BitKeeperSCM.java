@@ -47,15 +47,22 @@ public class BitKeeperSCM extends SCM {
     private final String localRepository;
 
     /**
+     * Whether we should use 'bk pull' to update the local repository
+     * If not, we clean out the repo, and clone a fresh copy
+     */
+    private final boolean usePull;
+    
+    /**
      * The most recent changeset.  Used to detect new changes in the repo.
      */
     private String mostRecentChangeset;
     
     @DataBoundConstructor
-    public BitKeeperSCM(String parent, String localRepo) {
+    public BitKeeperSCM(String parent, String localRepo, boolean usePull, String recentChangeset) {
         this.parent = parent;
         this.localRepository = localRepo;
-        this.mostRecentChangeset = null;
+        this.usePull = usePull;
+        this.mostRecentChangeset = recentChangeset;
     }
 
     /**
@@ -74,24 +81,27 @@ public class BitKeeperSCM extends SCM {
         return localRepository;
     }
     
+    public boolean isUsePull() {
+    	return usePull;
+    }
+    
+    public String getMostRecentChangeset() {
+    	return mostRecentChangeset;
+    }
+    
 	@Override
 	public boolean checkout(AbstractBuild build, Launcher launcher,
 			FilePath workspace, BuildListener listener, File changelogFile)
 			throws IOException, InterruptedException {
         PrintStream output = listener.getLogger();
         FilePath localRepo = workspace.child(localRepository);
-        if(!isBkRoot(launcher, localRepo, listener)) {
-        	cloneLocalRepo(launcher, workspace, output);
-        	output.println("New clone made");
+        if(!this.usePull) {
+        	localRepo.deleteRecursive();
+        }
+        if(!localRepo.exists()) {
+        	cloneLocalRepo(launcher, listener, workspace, output);
         } else {
-            if(launcher.launch(
-                    new String[]{getDescriptor().getBkExe(),"pull","-u", "-c9",parent},
-                    EnvVars.masterEnvVars, output,localRepo).join() != 0) 
-            {
-                    listener.error("Failed to pull from " + parent);
-                    throw new AbortException();        	
-            }
-            output.println("Pull completed");
+            pullLocalRepo(launcher, listener, workspace, output);
         }
         
         saveChangelog(launcher, listener, changelogFile, localRepo);
@@ -99,7 +109,22 @@ public class BitKeeperSCM extends SCM {
         
 		this.mostRecentChangeset = 
 			this.getLatestChangeset(launcher, workspace, this.localRepository, listener);
+		build.getProject().save();
 		return true;
+	}
+
+	private void pullLocalRepo(Launcher launcher, BuildListener listener,
+			FilePath workspace, PrintStream output) throws IOException,
+			InterruptedException, AbortException {
+		FilePath localRepo = workspace.child(localRepository);
+		if(launcher.launch(
+		        new String[]{getDescriptor().getBkExe(),"pull","-u", "-c9",parent},
+		        EnvVars.masterEnvVars, output,localRepo).join() != 0) 
+		{
+		        listener.error("Failed to pull from " + parent);
+		        throw new AbortException();        	
+		}
+		output.println("Pull completed");
 	}
 
 	private void saveChangelog(Launcher launcher, BuildListener listener,
@@ -197,12 +222,17 @@ public class BitKeeperSCM extends SCM {
     	return rev;
 	}
 	
-    private void cloneLocalRepo(Launcher launcher, FilePath workspace, PrintStream output) 
+    private void cloneLocalRepo(Launcher launcher, TaskListener listener, 
+    		FilePath workspace, PrintStream output) 
     throws InterruptedException, IOException 
     {
-    	launcher.launch(
+    	if(launcher.launch(
             new String[]{getDescriptor().getBkExe(),"clone",parent,localRepository},
-            EnvVars.masterEnvVars, output,workspace).join();
+            EnvVars.masterEnvVars, output,workspace).join()!=0){
+    		listener.error("Failed to clone from " + this.parent);
+    		throw new AbortException();
+    	}
+    	output.println("New clone made");
     }
 
 	public static final class DescriptorImpl extends SCMDescriptor<BitKeeperSCM> {
@@ -230,7 +260,9 @@ public class BitKeeperSCM extends SCM {
         public SCM newInstance(StaplerRequest req) throws FormException {
             return new BitKeeperSCM(
             		req.getParameter("bitkeeper.parent"),
-            		req.getParameter("bitkeeper.localRepository")
+            		req.getParameter("bitkeeper.localRepository"),
+            		req.getParameter("bitkeeper.usePull")!=null,
+            		req.getParameter("bitkeeper.mostRecentChangeset")
             );
         }
 

@@ -5,5 +5,17 @@
   <f:entry title="Local repository name" help="/plugin/bitkeeper/localhelp.html">
     <f:textbox name="bitkeeper.localRepository" value="${scm.localRepository}" />
   </f:entry>
+  <f:entry title="Use pull"
+    description="
+      If checked, Hudson will use 'bk pull' whenever possible, making the build faster.
+      But this causes the artifacts from the previous build to remain when a new build starts.">
+    <f:checkbox name="bitkeeper.usePull" checked="${h.defaultToTrue(scm.usePull)}"/>
+  </f:entry>
+  <f:entry title="Most recent changeset" 
+    description="
+      Used by Hudson to track what changes are part of a build.  It is maintained 
+      automatically.  Manual updates are useful when a previous run needs to be deleted.">
+    <f:textbox name="bitkeeper.mostRecentChangeset" value="${scm.mostRecentChangeset}" />
+  </f:entry>
   
 </j:jelly>
