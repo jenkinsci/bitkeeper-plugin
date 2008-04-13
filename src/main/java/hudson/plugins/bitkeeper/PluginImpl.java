@@ -12,6 +12,7 @@ import hudson.tasks.BuildStep;
  * See javadoc of {@link Plugin} for more about what can be done on this class.
  *
  * @author Kohsuke Kawaguchi
+ * @Plugin
  */
 public class PluginImpl extends Plugin {
     public void start() throws Exception {
