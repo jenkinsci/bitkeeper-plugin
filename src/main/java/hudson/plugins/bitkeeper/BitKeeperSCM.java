@@ -3,7 +3,10 @@ package hudson.plugins.bitkeeper;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -91,15 +94,48 @@ public class BitKeeperSCM extends SCM {
             output.println("Pull completed");
         }
         
+        saveChangelog(launcher, listener, changelogFile, localRepo);
+        output.println("Changelog saved");
+        
 		this.mostRecentChangeset = 
 			this.getLatestChangeset(launcher, workspace, this.localRepository, listener);
 		return true;
 	}
 
+	private void saveChangelog(Launcher launcher, BuildListener listener,
+			File changelogFile, FilePath localRepo)
+			throws IOException, InterruptedException, FileNotFoundException,
+			AbortException {
+		OutputStream changelog = null;
+		try {
+			changelog = new FileOutputStream(changelogFile);
+			if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
+				listener.error("No most recent changeset available for changelog");
+				return;
+			}
+
+			if(launcher.launch(
+                new String[]{
+                		getDescriptor().getBkExe(),
+                		"changes",
+                		"-v", 
+                		"-r" + this.mostRecentChangeset + "..",
+                		"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
+                },
+                EnvVars.masterEnvVars, changelog,localRepo).join() != 0) 
+			{
+                listener.error("Failed to save changelog");
+                throw new AbortException();        	
+			}
+		} finally {
+			if(changelog != null)
+				changelog.close();
+		}
+	}
+
 	@Override
 	public ChangeLogParser createChangeLogParser() {
-		// TODO Auto-generated method stub
-		return null;
+		return new BitKeeperChangeLogParser();
 	}
 
 	@Override
