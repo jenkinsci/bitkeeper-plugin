@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -93,33 +94,35 @@ public class BitKeeperSCM extends SCM {
 	public boolean checkout(AbstractBuild build, Launcher launcher,
 			FilePath workspace, BuildListener listener, File changelogFile)
 			throws IOException, InterruptedException {
-        PrintStream output = listener.getLogger();
         FilePath localRepo = workspace.child(localRepository);
         if(!this.usePull) {
         	localRepo.deleteRecursive();
         }
         if(!localRepo.exists()) {
-        	cloneLocalRepo(launcher, listener, workspace, output);
+        	cloneLocalRepo(build, launcher, listener, workspace);
         } else {
-            pullLocalRepo(launcher, listener, workspace, output);
+            pullLocalRepo(build, launcher, listener, workspace);
         }
         
-        saveChangelog(launcher, listener, changelogFile, localRepo);
-        output.println("Changelog saved");
+        saveChangelog(build, launcher, listener, changelogFile, localRepo);
+        
         
 		this.mostRecentChangeset = 
-			this.getLatestChangeset(launcher, workspace, this.localRepository, listener);
+			this.getLatestChangeset(
+					build.getEnvVars(), launcher, workspace, this.localRepository, listener
+			);
 		build.getProject().save();
 		return true;
 	}
 
-	private void pullLocalRepo(Launcher launcher, BuildListener listener,
-			FilePath workspace, PrintStream output) throws IOException,
-			InterruptedException, AbortException {
+	private void pullLocalRepo(AbstractBuild build, Launcher launcher, 
+			BuildListener listener, FilePath workspace) 
+	throws IOException, InterruptedException, AbortException {
 		FilePath localRepo = workspace.child(localRepository);
+		PrintStream output = listener.getLogger();
 		if(launcher.launch(
 		        new String[]{getDescriptor().getBkExe(),"pull","-u", "-c9",parent},
-		        EnvVars.masterEnvVars, output,localRepo).join() != 0) 
+		        build.getEnvVars(), output,localRepo).join() != 0) 
 		{
 		        listener.error("Failed to pull from " + parent);
 		        throw new AbortException();        	
@@ -127,7 +130,7 @@ public class BitKeeperSCM extends SCM {
 		output.println("Pull completed");
 	}
 
-	private void saveChangelog(Launcher launcher, BuildListener listener,
+	private void saveChangelog(AbstractBuild build, Launcher launcher, BuildListener listener,
 			File changelogFile, FilePath localRepo)
 			throws IOException, InterruptedException, FileNotFoundException,
 			AbortException {
@@ -147,7 +150,7 @@ public class BitKeeperSCM extends SCM {
                 		"-r" + this.mostRecentChangeset + "..",
                 		"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
                 },
-                EnvVars.masterEnvVars, changelog,localRepo).join() != 0) 
+                build.getEnvVars(), changelog,localRepo).join() != 0) 
 			{
                 listener.error("Failed to save changelog");
                 throw new AbortException();        	
@@ -156,6 +159,7 @@ public class BitKeeperSCM extends SCM {
 			if(changelog != null)
 				changelog.close();
 		}
+		listener.getLogger().println("Changelog saved");
 	}
 
 	@Override
@@ -173,9 +177,11 @@ public class BitKeeperSCM extends SCM {
 			FilePath workspace, TaskListener listener) throws IOException,
 			InterruptedException {
         PrintStream output = listener.getLogger();
-        FilePath localRepo = workspace.child(localRepository);
-
-        String cset = this.getLatestChangeset(launcher, workspace, parent, listener);
+        
+        // since we don't yet have an AbstractBuild object, this can only run on the master
+        // thus the masterEnvVars use is safe
+        String cset = 
+        	this.getLatestChangeset(EnvVars.masterEnvVars, launcher, workspace, parent, listener);
         if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
         	this.mostRecentChangeset = cset;
         }
@@ -188,19 +194,14 @@ public class BitKeeperSCM extends SCM {
         }
     }
 	
-	private boolean isBkRoot(Launcher launcher, FilePath repository, TaskListener listener) 
-	throws InterruptedException, IOException
-	{
-		return repository.exists();
-	}
-
-	private String getLatestChangeset(Launcher launcher, FilePath workspace, String repository, TaskListener listener) 
+	private String getLatestChangeset(Map<String, String> env, Launcher launcher, 
+			FilePath workspace, String repository, TaskListener listener) 
 	throws IOException, InterruptedException 
 	{
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
     	if(launcher.launch(
                 new String[]{getDescriptor().getBkExe(),"changes","-r+", "-k", repository},
-                EnvVars.masterEnvVars, baos,workspace).join()!=0) {
+                env, baos,workspace).join()!=0) {
     		// dump the output from bk to assist trouble-shooting.
             Util.copyStream(new ByteArrayInputStream(baos.toByteArray()),listener.getLogger());
             listener.error("Failed to check the latest changeset");
@@ -222,13 +223,14 @@ public class BitKeeperSCM extends SCM {
     	return rev;
 	}
 	
-    private void cloneLocalRepo(Launcher launcher, TaskListener listener, 
-    		FilePath workspace, PrintStream output) 
+    private void cloneLocalRepo(AbstractBuild build, Launcher launcher, 
+    		TaskListener listener, FilePath workspace) 
     throws InterruptedException, IOException 
     {
+    	PrintStream output = listener.getLogger();
     	if(launcher.launch(
             new String[]{getDescriptor().getBkExe(),"clone",parent,localRepository},
-            EnvVars.masterEnvVars, output,workspace).join()!=0){
+            build.getEnvVars(), output,workspace).join()!=0){
     		listener.error("Failed to clone from " + this.parent);
     		throw new AbortException();
     	}
