@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Map;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -181,7 +182,7 @@ public class BitKeeperSCM extends SCM {
         // since we don't yet have an AbstractBuild object, this can only run on the master
         // thus the masterEnvVars use is safe
         String cset = 
-        	this.getLatestChangeset(EnvVars.masterEnvVars, launcher, workspace, parent, listener);
+        	this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
         if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
         	this.mostRecentChangeset = cset;
         }
