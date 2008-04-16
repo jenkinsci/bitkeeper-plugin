@@ -38,7 +38,7 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 public class BitKeeperSCM extends SCM {
-    /**
+	/**
      * Source repository URL from which we pull.
      */
     private final String parent;
@@ -91,6 +91,11 @@ public class BitKeeperSCM extends SCM {
     	return mostRecentChangeset;
     }
     
+    @Override
+	public FilePath getModuleRoot(FilePath workspace) {
+		return workspace.child(this.localRepository);
+	}
+
 	@Override
 	public boolean checkout(AbstractBuild build, Launcher launcher,
 			FilePath workspace, BuildListener listener, File changelogFile)
@@ -106,7 +111,6 @@ public class BitKeeperSCM extends SCM {
         }
         
         saveChangelog(build, launcher, listener, changelogFile, localRepo);
-        
         
 		this.mostRecentChangeset = 
 			this.getLatestChangeset(
@@ -178,9 +182,7 @@ public class BitKeeperSCM extends SCM {
 			FilePath workspace, TaskListener listener) throws IOException,
 			InterruptedException {
         PrintStream output = listener.getLogger();
-        
-        // since we don't yet have an AbstractBuild object, this can only run on the master
-        // thus the masterEnvVars use is safe
+                
         String cset = 
         	this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
         if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
