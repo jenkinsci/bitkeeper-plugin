@@ -11,6 +11,12 @@
       But this causes the artifacts from the previous build to remain when a new build starts.">
     <f:checkbox name="bitkeeper.usePull" checked="${h.defaultToTrue(scm.usePull)}"/>
   </f:entry>
+  <f:entry title="Run quietly"
+    description="
+      If checked, Hudson will use '-q' for clone and pull, limiting the amount of console output.">
+    <f:checkbox name="bitkeeper.quiet" checked="${h.defaultToTrue(scm.quiet)}"/>
+  </f:entry>
+  
   <f:entry title="Most recent changeset" 
     description="
       Used by Hudson to track what changes are part of a build.  It is maintained 

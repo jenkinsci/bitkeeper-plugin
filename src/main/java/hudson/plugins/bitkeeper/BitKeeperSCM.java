@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Collections;
 import java.util.regex.Matcher;
@@ -55,15 +56,24 @@ public class BitKeeperSCM extends SCM {
     private final boolean usePull;
     
     /**
+     * Specifies whether pull and clone commands should run in quiet mode
+     * By default, these commands print out all files that have changed.
+     * Since cloning can be quite verbose, turning on quiet mode can make the console
+     * output much more useful
+     */
+    private final boolean quiet;
+    
+    /**
      * The most recent changeset.  Used to detect new changes in the repo.
      */
     private String mostRecentChangeset;
     
     @DataBoundConstructor
-    public BitKeeperSCM(String parent, String localRepo, boolean usePull, String recentChangeset) {
+    public BitKeeperSCM(String parent, String localRepo, boolean usePull, boolean quiet, String recentChangeset) {
         this.parent = parent;
         this.localRepository = localRepo;
         this.usePull = usePull;
+        this.quiet = quiet;
         this.mostRecentChangeset = recentChangeset;
     }
 
@@ -86,7 +96,11 @@ public class BitKeeperSCM extends SCM {
     public boolean isUsePull() {
     	return usePull;
     }
-    
+
+    public boolean isQuiet() {
+    	return quiet;
+    }
+
     public String getMostRecentChangeset() {
     	return mostRecentChangeset;
     }
@@ -125,8 +139,16 @@ public class BitKeeperSCM extends SCM {
 	throws IOException, InterruptedException, AbortException {
 		FilePath localRepo = workspace.child(localRepository);
 		PrintStream output = listener.getLogger();
+		
+    	ArrayList<String> args = new ArrayList<String>();
+    	args.add(getDescriptor().getBkExe());
+    	args.add("pull");
+    	args.add("-u");
+    	args.add("-c9");
+    	if(quiet) args.add("-q");
+    	args.add(parent);
 		if(launcher.launch(
-		        new String[]{getDescriptor().getBkExe(),"pull","-u", "-c9",parent},
+		        args.toArray(new String[args.size()]),
 		        build.getEnvVars(), output,localRepo).join() != 0) 
 		{
 		        listener.error("Failed to pull from " + parent);
@@ -230,9 +252,15 @@ public class BitKeeperSCM extends SCM {
     		TaskListener listener, FilePath workspace) 
     throws InterruptedException, IOException 
     {
+    	ArrayList<String> args = new ArrayList<String>();
+    	args.add(getDescriptor().getBkExe());
+    	args.add("clone");
+    	if(quiet) args.add("-q");
+    	args.add(parent);
+    	args.add(localRepository);
     	PrintStream output = listener.getLogger();
     	if(launcher.launch(
-            new String[]{getDescriptor().getBkExe(),"clone",parent,localRepository},
+    		args.toArray(new String[args.size()]),
             build.getEnvVars(), output,workspace).join()!=0){
     		listener.error("Failed to clone from " + this.parent);
     		throw new AbortException();
@@ -267,6 +295,7 @@ public class BitKeeperSCM extends SCM {
             		req.getParameter("bitkeeper.parent"),
             		req.getParameter("bitkeeper.localRepository"),
             		req.getParameter("bitkeeper.usePull")!=null,
+            		req.getParameter("bitkeeper.quiet")!=null,
             		req.getParameter("bitkeeper.mostRecentChangeset")
             );
         }
