@@ -225,7 +225,7 @@ public class BitKeeperSCM extends SCM {
 	{
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
     	if(launcher.launch(
-                new String[]{getDescriptor().getBkExe(),"changes","-r+", "-k", repository},
+                new String[]{getDescriptor().getBkExe(),"changes","-r+", "-d:CSETKEY:", repository},
                 env, baos,workspace).join()!=0) {
     		// dump the output from bk to assist trouble-shooting.
             Util.copyStream(new ByteArrayInputStream(baos.toByteArray()),listener.getLogger());
