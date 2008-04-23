@@ -11,9 +11,4 @@
   <f:entry title="Run quietly" help="/plugin/bitkeeper/quiethelp.html">
     <f:checkbox name="bitkeeper.quiet" checked="${h.defaultToTrue(scm.quiet)}"/>
   </f:entry>
-  
-  <f:entry title="Most recent changeset" help="/plugin/bitkeeper/mostrecenthelp.html">
-    <f:textbox name="bitkeeper.mostRecentChangeset" value="${scm.mostRecentChangeset}" />
-  </f:entry>
-  
 </j:jelly>

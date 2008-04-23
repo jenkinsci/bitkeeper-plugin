@@ -26,6 +26,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.Hudson;
+import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.scm.ChangeLogParser;
 import hudson.scm.SCM;
@@ -63,18 +64,12 @@ public class BitKeeperSCM extends SCM {
      */
     private final boolean quiet;
     
-    /**
-     * The most recent changeset.  Used to detect new changes in the repo.
-     */
-    private String mostRecentChangeset;
-    
     @DataBoundConstructor
-    public BitKeeperSCM(String parent, String localRepo, boolean usePull, boolean quiet, String recentChangeset) {
+    public BitKeeperSCM(String parent, String localRepo, boolean usePull, boolean quiet) {
         this.parent = parent;
         this.localRepository = localRepo;
         this.usePull = usePull;
         this.quiet = quiet;
-        this.mostRecentChangeset = recentChangeset;
     }
 
     /**
@@ -101,22 +96,18 @@ public class BitKeeperSCM extends SCM {
     	return quiet;
     }
 
-    public String getMostRecentChangeset() {
-    	return mostRecentChangeset;
-    }
-    
     @Override
 	public FilePath getModuleRoot(FilePath workspace) {
 		return workspace.child(this.localRepository);
 	}
 
-	@Override
-	public boolean checkout(AbstractBuild build, Launcher launcher,
-			FilePath workspace, BuildListener listener, File changelogFile)
-			throws IOException, InterruptedException {
+    @Override
+    public boolean checkout(AbstractBuild build, Launcher launcher,
+        FilePath workspace, BuildListener listener, File changelogFile)
+        throws IOException, InterruptedException {
         FilePath localRepo = workspace.child(localRepository);
         if(!this.usePull) {
-        	localRepo.deleteRecursive();
+       	    localRepo.deleteRecursive();
         }
         if(!localRepo.exists()) {
         	cloneLocalRepo(build, launcher, listener, workspace);
@@ -125,13 +116,14 @@ public class BitKeeperSCM extends SCM {
         }
         
         saveChangelog(build, launcher, listener, changelogFile, localRepo);
-        
-		this.mostRecentChangeset = 
-			this.getLatestChangeset(
-					build.getEnvVars(), launcher, workspace, this.localRepository, listener
-			);
-		build.getProject().save();
-		return true;
+
+        String mostRecent = 
+            this.getLatestChangeset(
+                build.getEnvVars(), launcher, workspace, 
+                this.localRepository, listener
+            );
+        build.addAction(new BitKeeperTagAction(build, mostRecent));
+        return true;
 	}
 
 	private void pullLocalRepo(AbstractBuild build, Launcher launcher, 
@@ -161,32 +153,36 @@ public class BitKeeperSCM extends SCM {
 			File changelogFile, FilePath localRepo)
 			throws IOException, InterruptedException, FileNotFoundException,
 			AbortException {
-		OutputStream changelog = null;
-		try {
-			changelog = new FileOutputStream(changelogFile);
-			if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
-				listener.error("No most recent changeset available for changelog");
-				return;
-			}
+            OutputStream changelog = null;
+            Run prevBuild = build.getPreviousBuild();
+            BitKeeperTagAction tagAction = 
+                prevBuild == null ? null : prevBuild.getAction(BitKeeperTagAction.class);
+            String recentCset = tagAction == null ? null : tagAction.getCsetkey();
+            try {
+                changelog = new FileOutputStream(changelogFile);
+                if(recentCset == null || recentCset.equals("")) {
+                    listener.error("No most recent changeset available for changelog");
+                    return;
+                }
 
-			if(launcher.launch(
-                new String[]{
-                		getDescriptor().getBkExe(),
-                		"changes",
-                		"-v", 
-                		"-r" + this.mostRecentChangeset + "..",
-                		"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
-                },
-                build.getEnvVars(), changelog,localRepo).join() != 0) 
-			{
-                listener.error("Failed to save changelog");
-                throw new AbortException();        	
-			}
-		} finally {
-			if(changelog != null)
-				changelog.close();
-		}
-		listener.getLogger().println("Changelog saved");
+                if(launcher.launch(
+                    new String[]{
+                        getDescriptor().getBkExe(),
+                        "changes",
+                	"-v", 
+                	"-r" + recentCset + "..",
+                	"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
+                    },
+                    build.getEnvVars(), changelog,localRepo).join() != 0) 
+                {
+                    listener.error("Failed to save changelog");
+                    throw new AbortException();        	
+                }
+	    } finally {
+                if(changelog != null)
+                    changelog.close();
+            }
+            listener.getLogger().println("Changelog saved");
 	}
 
 	@Override
@@ -204,13 +200,16 @@ public class BitKeeperSCM extends SCM {
 			FilePath workspace, TaskListener listener) throws IOException,
 			InterruptedException {
         PrintStream output = listener.getLogger();
-                
+        Run lastBuild = project.getLastBuild();
+        BitKeeperTagAction tagAction = 
+            lastBuild == null ? null : lastBuild.getAction(BitKeeperTagAction.class);
+        String recentCset = tagAction == null ? null : tagAction.getCsetkey();
         String cset = 
-        	this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
-        if(this.mostRecentChangeset == null || this.mostRecentChangeset.equals("")) {
-        	this.mostRecentChangeset = cset;
+            this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
+        if(recentCset == null || recentCset.equals("")) {
+       	    recentCset = cset;
         }
-        if(cset.equals(this.mostRecentChangeset)) {
+        if(cset.equals(recentCset)) {
             output.println("No changes");
             return false;
         } else {
@@ -295,8 +294,7 @@ public class BitKeeperSCM extends SCM {
             		req.getParameter("bitkeeper.parent"),
             		req.getParameter("bitkeeper.localRepository"),
             		req.getParameter("bitkeeper.usePull")!=null,
-            		req.getParameter("bitkeeper.quiet")!=null,
-            		req.getParameter("bitkeeper.mostRecentChangeset")
+            		req.getParameter("bitkeeper.quiet")!=null
             );
         }
 
