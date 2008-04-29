@@ -21,22 +21,18 @@ public class BitKeeperTagAction extends AbstractModelObject implements Action {
 	 */
 	private static final long serialVersionUID = -8075839917372981396L;
 
-	@Override
 	public String getDisplayName() {
 		return "BitKeeper Changeset";
 	}
 
-	@Override
 	public String getIconFileName() {
 		return null; //return "clipboard.gif";
 	}
 
-	@Override
 	public String getUrlName() {
 		return "recentChangeset";
 	}
 
-	@Override
 	public String getSearchUrl() {
 		return getUrlName();
 	}

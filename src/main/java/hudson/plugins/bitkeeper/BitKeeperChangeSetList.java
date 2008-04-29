@@ -10,7 +10,7 @@ import hudson.scm.ChangeLogSet;
 public class BitKeeperChangeSetList extends ChangeLogSet<BitKeeperChangeset> {
 	private final List<BitKeeperChangeset> changeSets;
 	
-	public BitKeeperChangeSetList(AbstractBuild build, List<BitKeeperChangeset> logs) {
+	public BitKeeperChangeSetList(AbstractBuild<?, ?> build, List<BitKeeperChangeset> logs) {
         super(build);
         //Collections.reverse(logs);  // put new things first
         this.changeSets = Collections.unmodifiableList(logs);
@@ -23,7 +23,6 @@ public class BitKeeperChangeSetList extends ChangeLogSet<BitKeeperChangeset> {
 		return changeSets.isEmpty();
 	}
 
-	@Override
 	public Iterator<BitKeeperChangeset> iterator() {
 		return changeSets.iterator();
 	}
