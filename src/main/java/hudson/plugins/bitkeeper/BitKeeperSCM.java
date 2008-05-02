@@ -126,11 +126,6 @@ public class BitKeeperSCM extends SCM {
         return true;
 	}
 
-	@Override
-	public boolean requiresWorkspaceForPolling() {
-		return false;
-	}
-
 	private void pullLocalRepo(AbstractBuild build, Launcher launcher, 
 			BuildListener listener, FilePath workspace) 
 	throws IOException, InterruptedException, AbortException {
@@ -199,6 +194,11 @@ public class BitKeeperSCM extends SCM {
 	public DescriptorImpl getDescriptor() {
 		return DescriptorImpl.DESCRIPTOR;
 	}
+	
+	@Override
+	public boolean requiresWorkspaceForPolling() {
+		return false;
+	}
 
 	@Override
 	public boolean pollChanges(AbstractProject project, Launcher launcher,
@@ -211,16 +211,7 @@ public class BitKeeperSCM extends SCM {
         String recentCset = tagAction == null ? null : tagAction.getCsetkey();
         String cset = 
             this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
-        if(recentCset == null || recentCset.equals("")) {
-       	    recentCset = cset;
-        }
-        if(cset.equals(recentCset)) {
-            output.println("No changes");
-            return false;
-        } else {
-        	output.println("Changes detected");
-        	return true;
-        }
+        return !(cset.equals(recentCset));
     }
 	
 	private String getLatestChangeset(Map<String, String> env, Launcher launcher, 
