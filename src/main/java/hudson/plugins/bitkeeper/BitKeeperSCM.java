@@ -126,6 +126,11 @@ public class BitKeeperSCM extends SCM {
         return true;
 	}
 
+	@Override
+	public boolean requiresWorkspaceForPolling() {
+		return false;
+	}
+
 	private void pullLocalRepo(AbstractBuild build, Launcher launcher, 
 			BuildListener listener, FilePath workspace) 
 	throws IOException, InterruptedException, AbortException {
