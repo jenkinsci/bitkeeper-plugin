@@ -64,6 +64,11 @@ public class BitKeeperSCM extends SCM {
      */
     private final boolean quiet;
     
+    /** 
+     * How many times to retry clone/pull operations before declaring the build a failure
+     */
+    private final int maxAttempts = 9;
+    
     @DataBoundConstructor
     public BitKeeperSCM(String parent, String localRepo, boolean usePull, boolean quiet) {
         this.parent = parent;
@@ -136,7 +141,7 @@ public class BitKeeperSCM extends SCM {
     	args.add(getDescriptor().getBkExe());
     	args.add("pull");
     	args.add("-u");
-    	args.add("-c9");
+    	args.add("-c" + maxAttempts);
     	if(quiet) args.add("-q");
     	args.add(parent);
 		if(launcher.launch(
@@ -254,12 +259,23 @@ public class BitKeeperSCM extends SCM {
     	args.add(parent);
     	args.add(localRepository);
     	PrintStream output = listener.getLogger();
-    	if(launcher.launch(
-    		args.toArray(new String[args.size()]),
-            build.getEnvVars(), output,workspace).join()!=0){
-    		listener.error("Failed to clone from " + this.parent);
+    	
+    	int attempt = 0;
+    	int result = 0;
+    	do {
+    		if(result != 0) {
+    			listener.error("Retrying clone");
+    		}
+    		result = launcher.launch(
+    				args.toArray(new String[args.size()]),
+    				build.getEnvVars(), output,workspace).join();
+    	} while(++attempt < maxAttempts && result != 0);
+    	
+    	if(result != 0) {
+    		listener.error("Failed to clone after " + maxAttempts + " attempts from " + this.parent);
     		throw new AbortException();
     	}
+    	
     	output.println("New clone made");
     }
 

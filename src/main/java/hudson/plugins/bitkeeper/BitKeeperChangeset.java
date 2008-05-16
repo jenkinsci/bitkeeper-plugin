@@ -7,6 +7,7 @@ import java.util.Set;
 
 import hudson.model.User;
 import hudson.scm.ChangeLogSet;
+import hudson.scm.EditType;
 
 public class BitKeeperChangeset extends ChangeLogSet.Entry {
 	private List<String> affectedPaths;
@@ -24,6 +25,10 @@ public class BitKeeperChangeset extends ChangeLogSet.Entry {
 		return affectedPaths;
 	}
 
+	public EditType getEditType() {
+		return EditType.EDIT;
+	}
+	
 	@Override
 	public User getAuthor() {
 		return user;
