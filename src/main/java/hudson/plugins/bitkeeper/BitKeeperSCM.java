@@ -110,16 +110,13 @@ public class BitKeeperSCM extends SCM {
     public boolean checkout(AbstractBuild build, Launcher launcher,
         FilePath workspace, BuildListener listener, File changelogFile)
         throws IOException, InterruptedException {
-        FilePath localRepo = workspace.child(localRepository);
         if(!this.usePull) {
-       	    localRepo.deleteRecursive();
-        }
-        if(!localRepo.exists()) {
         	cloneLocalRepo(build, launcher, listener, workspace);
         } else {
             pullLocalRepo(build, launcher, listener, workspace);
         }
         
+        FilePath localRepo = workspace.child(localRepository);        
         saveChangelog(build, launcher, listener, changelogFile, localRepo);
 
         String mostRecent = 
@@ -252,6 +249,8 @@ public class BitKeeperSCM extends SCM {
     		TaskListener listener, FilePath workspace) 
     throws InterruptedException, IOException 
     {
+        FilePath localRepo = workspace.child(localRepository);
+
     	ArrayList<String> args = new ArrayList<String>();
     	args.add(getDescriptor().getBkExe());
     	args.add("clone");
@@ -264,8 +263,11 @@ public class BitKeeperSCM extends SCM {
     	int result = 0;
     	do {
     		if(result != 0) {
+    			Thread.sleep(30000);
     			listener.error("Retrying clone");
+    			
     		}
+    		localRepo.deleteRecursive();
     		result = launcher.launch(
     				args.toArray(new String[args.size()]),
     				build.getEnvVars(), output,workspace).join();
