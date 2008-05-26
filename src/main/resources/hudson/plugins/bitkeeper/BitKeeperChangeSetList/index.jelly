@@ -22,6 +22,9 @@
               by <a href="${rootURL}/${cs.author.url}/">${cs.author}</a>:
             </b><br/>
             ${cs.msgAnnotated}
+            <j:forEach var="t" items="${cs.tags}">
+                Tag: <b>${t}</b><br/>
+            </j:forEach>
           </div>
         </td>
       </tr>

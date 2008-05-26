@@ -173,7 +173,7 @@ public class BitKeeperSCM extends SCM {
                         "changes",
                 	"-v", 
                 	"-r" + recentCset + "..",
-                	"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
+                	"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}$each(:TAG:){T (:TAG:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
                     },
                     build.getEnvVars(), changelog,localRepo).join() != 0) 
                 {

@@ -11,12 +11,14 @@ import hudson.scm.EditType;
 
 public class BitKeeperChangeset extends ChangeLogSet.Entry {
 	private List<String> affectedPaths;
+	private List<String> tags;
 	private User user;
 	private StringBuilder comment;
 	
 	public BitKeeperChangeset(String user) {
 		this.user = User.get(user);
 		this.comment = new StringBuilder();
+		this.tags = new ArrayList<String>();
 		this.affectedPaths = new ArrayList<String>();
 	}
 
@@ -25,6 +27,10 @@ public class BitKeeperChangeset extends ChangeLogSet.Entry {
 		return affectedPaths;
 	}
 
+	public Collection<String> getTags() {
+		return tags;
+	}
+	
 	public EditType getEditType() {
 		return EditType.EDIT;
 	}
@@ -45,6 +51,10 @@ public class BitKeeperChangeset extends ChangeLogSet.Entry {
 	
 	public void addComment(String c) {
 		comment.append(c);
+	}
+	
+	public void addTag(String t) {
+		tags.add(t);
 	}
 	
 	public void addPath(String p) {

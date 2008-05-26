@@ -35,7 +35,9 @@ public class BitKeeperChangeLogParser extends ChangeLogParser {
 					}
 					cset = new BitKeeperChangeset(line.substring(2));
 				} else if(line.startsWith("C ")) {
-					cset.addComment(line.substring(2));
+					cset.addComment(line.substring(2) + "\n");
+				} else if(line.startsWith("T ")) {
+					cset.addTag(line.substring(2));
 				} else if(line.startsWith("F ")) {
 					cset.addPath(line.substring(2));
 				}
