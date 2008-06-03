@@ -50,6 +50,9 @@ public class BitKeeperChangeset extends ChangeLogSet.Entry {
 	}
 	
 	public void addComment(String c) {
+		if(comment.length() > 0) {
+			comment.append("\n");
+		}
 		comment.append(c);
 	}
 	
