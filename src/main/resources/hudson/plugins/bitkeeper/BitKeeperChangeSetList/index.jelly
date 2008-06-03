@@ -21,10 +21,10 @@
               <!--<a href="${browser.getChangeSetLink(cs)}">${cs.rev}:${cs.shortNode}</a>-->
               by <a href="${rootURL}/${cs.author.url}/">${cs.author}</a>:
             </b><br/>
-            ${cs.msgAnnotated}
             <j:forEach var="t" items="${cs.tags}">
-                Tag: <b>${t}</b><br/>
+                <b>Tag:</b> ${t}<br/>
             </j:forEach>
+            ${cs.msgAnnotated}
           </div>
         </td>
       </tr>

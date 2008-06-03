@@ -110,13 +110,14 @@ public class BitKeeperSCM extends SCM {
     public boolean checkout(AbstractBuild build, Launcher launcher,
         FilePath workspace, BuildListener listener, File changelogFile)
         throws IOException, InterruptedException {
-        if(!this.usePull) {
-        	cloneLocalRepo(build, launcher, listener, workspace);
-        } else {
-            pullLocalRepo(build, launcher, listener, workspace);
-        }
-        
+    	
         FilePath localRepo = workspace.child(localRepository);        
+        if(this.usePull && localRepo.exists()) {
+            pullLocalRepo(build, launcher, listener, workspace);
+        } else {
+        	cloneLocalRepo(build, launcher, listener, workspace);
+        } 
+        
         saveChangelog(build, launcher, listener, changelogFile, localRepo);
 
         String mostRecent = 
