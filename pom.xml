@@ -9,13 +9,13 @@
 
   <artifactId>bitkeeper</artifactId>
   <packaging>hpi</packaging>
-  <version>1.4</version>
+  <version>1.5-SNAPSHOT</version>
   <name>BitKeeeper plugin</name>
   <description>Allows Hudson to checkout and poll from a BitKeeper repository.  Checkout also parses the newly introduced changesets</description>
 
   <scm>
-    <connection>scm:svn:https://guest@svn.dev.java.net/svn/hudson/tags/bitkeeper-1.4</connection>
-    <developerConnection>scm:svn:https://svn.dev.java.net/svn/hudson/tags/bitkeeper-1.4</developerConnection>
-    <url>https://hudson.dev.java.net/source/browse/hudson/hudson/plugins/bitkeeper/tags/bitkeeper-1.4</url>
+    <connection>scm:svn:https://guest@svn.dev.java.net/svn/hudson/tags/bitkeeper-1.2</connection>
+    <developerConnection>scm:svn:https://svn.dev.java.net/svn/hudson/tags/bitkeeper-1.2</developerConnection>
+    <url>https://hudson.dev.java.net/source/browse/hudson/hudson/plugins/bitkeeper/tags/bitkeeper-1.2</url>
   </scm>
 </project>
