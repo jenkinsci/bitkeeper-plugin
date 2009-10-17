@@ -14,13 +14,10 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.servlet.ServletException;
-
 import hudson.AbortException;
-import hudson.EnvVars;
+import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
-import hudson.Proc;
 import hudson.Util;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
@@ -31,13 +28,14 @@ import hudson.model.TaskListener;
 import hudson.scm.ChangeLogParser;
 import hudson.scm.SCM;
 import hudson.scm.SCMDescriptor;
-import hudson.util.ByteBuffer;
-import hudson.util.FormFieldValidator;
+import hudson.util.FormValidation;
 import hudson.util.VersionNumber;
 
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.framework.io.ByteBuffer;
 
 public class BitKeeperSCM extends SCM {
 	/**
@@ -122,7 +120,7 @@ public class BitKeeperSCM extends SCM {
 
         String mostRecent = 
             this.getLatestChangeset(
-                build.getEnvVars(), launcher, workspace, 
+                build.getEnvironment(listener), launcher, workspace,
                 this.localRepository, listener
             );
         build.addAction(new BitKeeperTagAction(build, mostRecent));
@@ -142,9 +140,8 @@ public class BitKeeperSCM extends SCM {
     	args.add("-c" + maxAttempts);
     	if(quiet) args.add("-q");
     	args.add(parent);
-		if(launcher.launch(
-		        args.toArray(new String[args.size()]),
-		        build.getEnvVars(), output,localRepo).join() != 0) 
+		if(launcher.launch().cmds(args)
+		        .envs(build.getEnvironment(listener)).stdout(output).pwd(localRepo).join() != 0)
 		{
 		        listener.error("Failed to pull from " + parent);
 		        throw new AbortException();        	
@@ -168,15 +165,12 @@ public class BitKeeperSCM extends SCM {
                     return;
                 }
 
-                if(launcher.launch(
-                    new String[]{
-                        getDescriptor().getBkExe(),
+                if(launcher.launch().cmds(getDescriptor().getBkExe(),
                         "changes",
                 	"-v", 
                 	"-r" + recentCset + "..",
-                	"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}$each(:TAG:){T (:TAG:)\n}}$unless(:CHANGESET:){F :GFILE:\n}"
-                    },
-                    build.getEnvVars(), changelog,localRepo).join() != 0) 
+                	"-d$if(:CHANGESET:){U :USER:\n$each(:C:){C (:C:)\n}$each(:TAG:){T (:TAG:)\n}}$unless(:CHANGESET:){F :GFILE:\n}")
+                    .envs(build.getEnvironment(listener)).stdout(changelog).pwd(localRepo).join() != 0)
                 {
                     listener.error("Failed to save changelog");
                     throw new AbortException();        	
@@ -222,9 +216,9 @@ public class BitKeeperSCM extends SCM {
 	throws IOException, InterruptedException 
 	{
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    	if(launcher.launch(
-                new String[]{getDescriptor().getBkExe(),"changes","-r+", "-d:CSETKEY:", "-D", repository},
-                env, baos,workspace).join()!=0) {
+    	if(launcher.launch().cmds(
+                getDescriptor().getBkExe(),"changes","-r+", "-d:CSETKEY:", "-D", repository)
+                .envs(env).stdout(baos).pwd(workspace).join()!=0) {
     		// dump the output from bk to assist trouble-shooting.
             Util.copyStream(new ByteArrayInputStream(baos.toByteArray()),listener.getLogger());
             listener.error("Failed to check the latest changeset");
@@ -269,9 +263,8 @@ public class BitKeeperSCM extends SCM {
     			
     		}
     		localRepo.deleteRecursive();
-    		result = launcher.launch(
-    				args.toArray(new String[args.size()]),
-    				build.getEnvVars(), output,workspace).join();
+    		result = launcher.launch().cmds(args)
+    				 .envs(build.getEnvironment(listener)).stdout(output).pwd(workspace).join();
     	} while(++attempt < maxAttempts && result != 0);
     	
     	if(result != 0) {
@@ -282,12 +275,13 @@ public class BitKeeperSCM extends SCM {
     	output.println("New clone made");
     }
 
-	public static final class DescriptorImpl extends SCMDescriptor<BitKeeperSCM> {
+    public static final class DescriptorImpl extends SCMDescriptor<BitKeeperSCM> {
+        @Extension
         public static final DescriptorImpl DESCRIPTOR = new DescriptorImpl();
 
         private String bkExe;
 
-        private  DescriptorImpl() {
+        private DescriptorImpl() {
             super(BitKeeperSCM.class, null);
             load();
         }
@@ -304,7 +298,8 @@ public class BitKeeperSCM extends SCM {
             return bkExe;
         }
 
-        public SCM newInstance(StaplerRequest req) throws FormException {
+        @Override
+        public SCM newInstance(StaplerRequest req, JSONObject formData) throws FormException {
             return new BitKeeperSCM(
             		req.getParameter("bitkeeper.parent"),
             		req.getParameter("bitkeeper.localRepository"),
@@ -313,42 +308,41 @@ public class BitKeeperSCM extends SCM {
             );
         }
 
-        public boolean configure(StaplerRequest req) throws FormException {
+        @Override
+        public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             bkExe = req.getParameter("bitkeeper.bkExe");
             save();
             return true;
         }
 
-        public void doBkExeCheck(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-            new FormFieldValidator.Executable(req,rsp) {
-                protected void checkExecutable(File exe) throws IOException, ServletException {
+        public FormValidation doBkExeCheck(@QueryParameter String value) {
+            return FormValidation.validateExecutable(value, new FormValidation.FileValidator() {
+                @Override public FormValidation validate(File exe) {
                     ByteBuffer baos = new ByteBuffer();
                     try {
-                        Proc proc = Hudson.getInstance().createLauncher(TaskListener.NULL).launch(
-                                new String[]{getBkExe(), "version"}, new String[0], baos, null);
-                        proc.join();
+                        Hudson.getInstance().createLauncher(TaskListener.NULL).launch()
+                                .cmds(getBkExe(), "version").stdout(baos).join();
 
                         Matcher m = VERSION_STRING.matcher(baos.toString());
                         if(m.find()) {
                             try {
                                 if(new VersionNumber(m.group(1)).compareTo(V4_0_1)>=0) {
-                                    ok(); // right version
+                                    return FormValidation.ok(); // right version
                                 } else {
-                                    error("This bk is version "+m.group(1)+" but we need 4.0.1+");
+                                    return FormValidation.error("This bk is version "+m.group(1)+" but we need 4.0.1+");
                                 }
                             } catch (IllegalArgumentException e) {
-                                warning("Hudson can't tell if this bk is 4.0.1 or later (detected version is %s)",m.group(1));
+                                return FormValidation.warning("Hudson can't tell if this bk is 4.0.1 or later (detected version is %s)",m.group(1));
                             }
-                            return;
                         }
                     } catch (IOException e) {
                         // failed
                     } catch (InterruptedException e) {
                         // failed
                     }
-                    error("Unable to check bk version");
+                    return FormValidation.error("Unable to check bk version");
                 }
-            }.process();
+            });
         }
 
         /**
