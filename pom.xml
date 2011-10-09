@@ -25,4 +25,9 @@
       <url>http://maven.glassfish.org/content/groups/public/</url>
     </repository>
   </repositories>
+  <scm>
+    <connection>scm:git:git://github.com/jenkinsci/bitkeeper-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/bitkeeper-plugin.git</developerConnection>
+    <url>https://github.com/jenkinsci/bitkeeper-plugin/</url>
+  </scm>
 </project>
