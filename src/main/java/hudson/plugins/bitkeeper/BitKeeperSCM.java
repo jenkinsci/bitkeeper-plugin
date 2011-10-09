@@ -26,8 +26,10 @@ import hudson.model.Hudson;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.scm.ChangeLogParser;
+import hudson.scm.PollingResult;
 import hudson.scm.SCM;
 import hudson.scm.SCMDescriptor;
+import hudson.scm.SCMRevisionState;
 import hudson.util.FormValidation;
 import hudson.util.VersionNumber;
 
@@ -105,9 +107,9 @@ public class BitKeeperSCM extends SCM {
 	}
 
     @Override
-    public boolean checkout(AbstractBuild build, Launcher launcher,
-        FilePath workspace, BuildListener listener, File changelogFile)
-        throws IOException, InterruptedException {
+    public boolean checkout(AbstractBuild<?, ?> build, Launcher launcher,
+            FilePath workspace, BuildListener listener, File changelogFile)
+            throws IOException, InterruptedException {
     	
         FilePath localRepo = workspace.child(localRepository);        
         if(this.usePull && localRepo.exists()) {
@@ -127,7 +129,19 @@ public class BitKeeperSCM extends SCM {
         return true;
 	}
 
-	private void pullLocalRepo(AbstractBuild build, Launcher launcher, 
+    @Override
+    public SCMRevisionState calcRevisionsFromBuild(AbstractBuild<?, ?> build,
+            Launcher launcher, TaskListener listener) throws IOException,
+            InterruptedException {
+        String mostRecent = 
+            this.getLatestChangeset(
+                build.getEnvironment(listener), launcher, build.getWorkspace(),
+                this.localRepository, listener
+            );
+        return new BitKeeperTagAction(build, mostRecent);
+    }
+
+	private void pullLocalRepo(AbstractBuild<?,?> build, Launcher launcher, 
 			BuildListener listener, FilePath workspace) 
 	throws IOException, InterruptedException, AbortException {
 		FilePath localRepo = workspace.child(localRepository);
@@ -149,7 +163,7 @@ public class BitKeeperSCM extends SCM {
 		output.println("Pull completed");
 	}
 
-	private void saveChangelog(AbstractBuild build, Launcher launcher, BuildListener listener,
+	private void saveChangelog(AbstractBuild<?,?> build, Launcher launcher, BuildListener listener,
 			File changelogFile, FilePath localRepo)
 			throws IOException, InterruptedException, FileNotFoundException,
 			AbortException {
@@ -197,20 +211,6 @@ public class BitKeeperSCM extends SCM {
 		return false;
 	}
 
-	@Override
-	public boolean pollChanges(AbstractProject project, Launcher launcher,
-			FilePath workspace, TaskListener listener) throws IOException,
-			InterruptedException {
-        PrintStream output = listener.getLogger();
-        Run lastBuild = project.getLastBuild();
-        BitKeeperTagAction tagAction = 
-            lastBuild == null ? null : lastBuild.getAction(BitKeeperTagAction.class);
-        String recentCset = tagAction == null ? null : tagAction.getCsetkey();
-        String cset = 
-            this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
-        return !(cset.equals(recentCset));
-    }
-	
 	private String getLatestChangeset(Map<String, String> env, Launcher launcher, 
 			FilePath workspace, String repository, TaskListener listener) 
 	throws IOException, InterruptedException 
@@ -240,7 +240,7 @@ public class BitKeeperSCM extends SCM {
     	return rev;
 	}
 	
-    private void cloneLocalRepo(AbstractBuild build, Launcher launcher, 
+    private void cloneLocalRepo(AbstractBuild<?,?> build, Launcher launcher, 
     		TaskListener listener, FilePath workspace) 
     throws InterruptedException, IOException 
     {
@@ -353,5 +353,17 @@ public class BitKeeperSCM extends SCM {
         private static final VersionNumber V4_0_1 = new VersionNumber("4.0.1");
     }
 
-
+    @Override
+    protected PollingResult compareRemoteRevisionWith(
+            AbstractProject<?, ?> project, Launcher launcher,
+            FilePath workspace, TaskListener listener, SCMRevisionState baseline)
+            throws IOException, InterruptedException {
+        Run lastBuild = project.getLastBuild();
+        BitKeeperTagAction tagAction = 
+            lastBuild == null ? null : lastBuild.getAction(BitKeeperTagAction.class);
+        String recentCset = tagAction == null ? null : tagAction.getCsetkey();
+        String cset = 
+            this.getLatestChangeset(Collections.<String,String>emptyMap(), launcher, workspace, parent, listener);
+        return (cset.equals(recentCset)) ? PollingResult.NO_CHANGES : PollingResult.SIGNIFICANT;
+    }
 }

@@ -4,8 +4,9 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractModelObject;
 import hudson.model.Action;
 import hudson.scm.AbstractScmTagAction;
+import hudson.scm.SCMRevisionState;
 
-public class BitKeeperTagAction extends AbstractModelObject implements Action {	
+public class BitKeeperTagAction extends SCMRevisionState {	
 	private String csetkey;
 	
 	public BitKeeperTagAction(AbstractBuild b, String key) {
