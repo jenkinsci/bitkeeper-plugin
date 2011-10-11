@@ -102,7 +102,12 @@ public class BitKeeperSCM extends SCM {
     }
 
     @Override
-	public FilePath getModuleRoot(FilePath workspace) {
+    public boolean requiresWorkspaceForPolling() {
+        return false;
+    }
+
+    @Override
+	public FilePath getModuleRoot(FilePath workspace, AbstractBuild build) {
 		return workspace.child(this.localRepository);
 	}
 
@@ -111,7 +116,7 @@ public class BitKeeperSCM extends SCM {
             FilePath workspace, BuildListener listener, File changelogFile)
             throws IOException, InterruptedException {
     	
-        FilePath localRepo = workspace.child(localRepository);        
+        FilePath localRepo = workspace.child(localRepository);
         if(this.usePull && localRepo.exists()) {
             pullLocalRepo(build, launcher, listener, workspace);
         } else {
@@ -206,16 +211,14 @@ public class BitKeeperSCM extends SCM {
 		return DescriptorImpl.DESCRIPTOR;
 	}
 	
-	@Override
-	public boolean requiresWorkspaceForPolling() {
-		return false;
-	}
-
 	private String getLatestChangeset(Map<String, String> env, Launcher launcher, 
 			FilePath workspace, String repository, TaskListener listener) 
 	throws IOException, InterruptedException 
 	{
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		if(launcher == null) {
+		    launcher = new Launcher.LocalLauncher(listener);
+		}
     	if(launcher.launch().cmds(
                 getDescriptor().getBkExe(),"changes","-r+", "-d:CSETKEY:", "-D", repository)
                 .envs(env).stdout(baos).pwd(workspace).join()!=0) {
