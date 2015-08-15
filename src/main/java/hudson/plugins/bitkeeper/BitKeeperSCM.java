@@ -25,6 +25,7 @@ import hudson.model.BuildListener;
 import hudson.model.Hudson;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.model.Descriptor.FormException;
 import hudson.scm.ChangeLogParser;
 import hudson.scm.PollingResult;
 import hudson.scm.SCM;
@@ -70,9 +71,9 @@ public class BitKeeperSCM extends SCM {
     private final int maxAttempts = 9;
     
     @DataBoundConstructor
-    public BitKeeperSCM(String parent, String localRepo, boolean usePull, boolean quiet) {
+    public BitKeeperSCM(String parent, String localRepository, boolean usePull, boolean quiet) {
         this.parent = parent;
-        this.localRepository = localRepo;
+        this.localRepository = localRepository;
         this.usePull = usePull;
         this.quiet = quiet;
     }
@@ -303,12 +304,7 @@ public class BitKeeperSCM extends SCM {
 
         @Override
         public SCM newInstance(StaplerRequest req, JSONObject formData) throws FormException {
-            return new BitKeeperSCM(
-            		req.getParameter("bitkeeper.parent"),
-            		req.getParameter("bitkeeper.localRepository"),
-            		req.getParameter("bitkeeper.usePull")!=null,
-            		req.getParameter("bitkeeper.quiet")!=null
-            );
+            return super.newInstance(req, formData);
         }
 
         @Override
