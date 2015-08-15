@@ -331,7 +331,7 @@ public class BitKeeperSCM extends SCM {
                                     return FormValidation.error("This bk is version "+m.group(1)+" but we need 4.0.1+");
                                 }
                             } catch (IllegalArgumentException e) {
-                                return FormValidation.warning("Hudson can't tell if this bk is 4.0.1 or later (detected version is %s)",m.group(1));
+                                return FormValidation.warning("Jenkins can't tell if this bk is 4.0.1 or later (detected version is %s)",m.group(1));
                             }
                         }
                     } catch (IOException e) {
