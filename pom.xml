@@ -8,7 +8,7 @@
 
   <artifactId>bitkeeper</artifactId>
   <packaging>hpi</packaging>
-  <version>1.8-SNAPSHOT</version>
+  <version>1.8</version>
   <name>BitKeeeper plugin</name>
   <description>Allows Jenkins to checkout and poll from a BitKeeper repository.  Checkout also parses the newly introduced changesets</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/BitKeeper+Plugin</url> 
@@ -29,6 +29,7 @@
     <connection>scm:git:git://github.com/jenkinsci/bitkeeper-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:jenkinsci/bitkeeper-plugin.git</developerConnection>
     <url>https://github.com/jenkinsci/bitkeeper-plugin/</url>
+    <tag>bitkeeper-1.8</tag>
   </scm>
 
     <pluginRepositories>
